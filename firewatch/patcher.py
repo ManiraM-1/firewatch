@@ -1,4 +1,5 @@
 import difflib
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -50,6 +51,22 @@ def _safe_path(repo_root, rel):
     return target
 
 
+def _is_absolute(rel):
+    return rel.startswith("/") or bool(re.match(r"^[A-Za-z]:/", rel))
+
+
+def _relative_to_repo(rel, repo_root):
+    root = Path(repo_root).resolve()
+    try:
+        return Path(rel).resolve().relative_to(root).as_posix()
+    except (ValueError, OSError):
+        pass
+    lowered_root = root.as_posix().lower().rstrip("/") + "/"
+    if rel.lower().startswith(lowered_root):
+        return rel[len(lowered_root):]
+    return normalize_path(rel, repo_root)
+
+
 def _find_rstrip_match(text, search):
     text_lines = text.split("\n")
     search_lines = search.strip("\n").split("\n")
@@ -92,11 +109,14 @@ def apply_edit(repo_root, edit, snapshot, allow_test_edits=False):
     rel = str(edit.get("file") or "").strip().replace("\\", "/")
     while rel.startswith("./"):
         rel = rel[2:]
-    if rel and not (Path(repo_root) / rel.lstrip("/")).exists():
+    if rel and _is_absolute(rel):
+        rel = _relative_to_repo(rel, repo_root)
+        if rel is None:
+            return EditResult(str(edit.get("file")), False, "path is outside the repository")
+    elif rel and not (Path(repo_root) / rel).exists():
         resolved = normalize_path(rel, repo_root)
         if resolved:
             rel = resolved
-    rel = rel.lstrip("/")
     search = edit.get("search", "")
     replace = edit.get("replace", "")
     if not rel:

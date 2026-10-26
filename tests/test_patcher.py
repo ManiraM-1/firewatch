@@ -70,3 +70,28 @@ def test_snapshot_restore(tmp_path):
     _, snap = edit(tmp_path, "a.py", "x = 1", "x = 2")
     snap.restore()
     assert (tmp_path / "a.py").read_text() == "x = 1\n"
+
+
+def test_absolute_path_inside_repo_becomes_relative(tmp_path):
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    result, snap = edit(tmp_path, str(tmp_path / "pkg" / "a.py"), "x = 1", "x = 2")
+    assert result.ok and result.file == "pkg/a.py"
+    assert list(snap.originals) == ["pkg/a.py"]
+
+
+def test_absolute_path_outside_repo_rejected(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "a.py").write_text("x = 1\n", encoding="utf-8")
+    outside = tmp_path / "a.py"
+    outside.write_text("x = 1\n", encoding="utf-8")
+    result, _ = edit(repo, str(outside), "x = 1", "x = 2")
+    assert not result.ok and "outside" in result.reason
+    assert outside.read_text() == "x = 1\n"
+
+
+def test_ci_runner_path_maps_to_repo_file(tmp_path):
+    (tmp_path / "articles.py").write_text("x = 1\n", encoding="utf-8")
+    result, _ = edit(tmp_path, "/home/runner/work/shop/shop/articles.py", "x = 1", "x = 2")
+    assert result.ok and result.file == "articles.py"
