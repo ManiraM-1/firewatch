@@ -86,8 +86,49 @@ The three Java cases use JUnit 5 and a standard Maven layout. They cover an off-
 
 ### Results
 
-<!-- Replace with the output of bench/results/latest.md after running the benchmark -->
-Run `firewatch bench` with your model and paste `bench/results/latest.md` here. Each run also writes a timestamped JSON file with every diagnosis, diff and rejected edit.
+All runs use **qwen2.5-coder 7B through Ollama on a Windows laptop**, 3 attempts per case. Raw results, including every diagnosis and diff, are in [`bench/results`](bench/results).
+
+| | Python (14 cases) | Java (3 cases) | Total |
+|---|---|---|---|
+| v1: count-based progress, fixed temperature | 7/14 (50%) | not run | 7/14 |
+| v2: set-based progress, escalating retries | **9/14 (64%)** | **2/3** | **11/17 (65%)** |
+
+| Case | v1 | v2 |
+|---|---|---|
+| config_wrong_key | fixed (1) | fixed (1) |
+| discount_threshold | not fixed | not fixed |
+| invoice_decimal_places | fixed (1) | fixed (1) |
+| leaderboard_order | not fixed | not fixed |
+| mean_integer_division | fixed (1) | fixed (1) |
+| missing_middle_name | not fixed | not fixed |
+| mutable_default_cart | fixed (1) | fixed (1) |
+| pagination_off_by_one | fixed (1) | fixed (1) |
+| port_exception_type | fixed (1) | fixed (1) |
+| renamed_import | fixed (1) | fixed (1) |
+| restock_mutates_input | not fixed | **fixed (2)** |
+| retry_attempt_count | not fixed | **fixed (1)** |
+| tax_rate_units | not fixed | not fixed |
+| weekend_check | not fixed | not fixed |
+| batch_loop_off_by_one (Java) | | fixed (1) |
+| free_shipping_boundary (Java) | | not fixed |
+| missing_middle_null (Java) | | fixed (2) |
+
+Numbers in brackets are the attempt that produced the passing fix.
+
+### What the first run taught me
+
+v1 scored 7/14. Reading the failures, not just the score, showed two problems with the agent rather than the model:
+
+1. **Counting failures is the wrong progress signal.** On `tax_rate_units`, the model changed the tax rates from percentages to fractions. That made the two checkout tests pass and broke `test_tax`, which had been passing. Failures went from 2 to 1, so v1 kept the change as "partial progress". v2 compares the *set* of failing tests and keeps a change only if every test failing afterwards was already failing before. In the v2 run this check rejected five attempts that would otherwise have looked like progress.
+2. **Retries repeated themselves.** On three failed cases, the model gave the same diagnosis on all three attempts, because at temperature 0.2 it confidently writes the same answer again. v2 raises the temperature on each retry (0.2 → 0.5 → 0.8), tells the model its previous diagnosis was probably wrong, and asks it to compare the expected and actual values. `retry_attempt_count` and `restock_mutates_input` went from not fixed to fixed.
+
+The test-file lock also earned its place: in v1, the model's answer to `retry_attempt_count` was to edit the test so it would expect the buggy behaviour, twice. Both edits were refused.
+
+### Honest caveats
+
+- A 7B model on a laptop is a floor, not a ceiling. Each model call takes 1–3 minutes, and runs vary: `tax_rate_units` was fixed in an earlier 3-case run and not fixed in either full run.
+- Each configuration was run once, so a difference of one or two cases is within run-to-run noise. v2 not losing any case v1 fixed, while fixing two more, is the meaningful part.
+- The cases are small. They measure whether the loop (reproduce, retrieve, patch, verify) works with a small open model, not how it does on a large codebase.
 
 ## Quick start
 

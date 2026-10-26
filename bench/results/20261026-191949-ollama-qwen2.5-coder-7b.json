@@ -1,0 +1,745 @@
+{
+  "model": "ollama:qwen2.5-coder:7b",
+  "max_attempts": 3,
+  "retry_temperatures": [
+    0.2,
+    0.5,
+    0.8
+  ],
+  "summary": {
+    "total": 17,
+    "fixed": 11,
+    "fix_rate": 0.647,
+    "first_attempt": 9,
+    "mean_attempts_when_fixed": 1.18,
+    "median_seconds": 157.6
+  },
+  "cases": [
+    {
+      "name": "config_wrong_key",
+      "title": "KeyError from a config key that was renamed",
+      "category": "wrong key",
+      "language": "python",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 116.5,
+      "model_seconds": 115.4,
+      "diagnosis": "The `http_options` function is trying to access a key 'timeout_seconds' which does not exist in the configuration dictionary.",
+      "diff": "--- a/settings.py\n+++ b/settings.py\n@@ -13,6 +13,6 @@\n def http_options(config):\n     return {\n         \"base_url\": f\"http://{config['host']}:{config['port']}\",\n-        \"timeout\": config[\"timeout_seconds\"],\n+        \"timeout\": config.get(\"timeout\", DEFAULTS[\"timeout\"]),\n         \"retries\": config[\"retries\"],\n     }\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `http_options` function is trying to access a key 'timeout_seconds' which does not exist in the configuration dictionary.",
+          "files_changed": [
+            "settings.py"
+          ],
+          "failed_before": 2,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/settings.py\n+++ b/settings.py\n@@ -13,6 +13,6 @@\n def http_options(config):\n     return {\n         \"base_url\": f\"http://{config['host']}:{config['port']}\",\n-        \"timeout\": config[\"timeout_seconds\"],\n+        \"timeout\": config.get(\"timeout\", DEFAULTS[\"timeout\"]),\n         \"retries\": config[\"retries\"],\n     }\n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "discount_threshold",
+      "title": "Bulk discount not applied at exactly the threshold",
+      "category": "boundary condition",
+      "language": "python",
+      "status": "not_fixed",
+      "attempts": 3,
+      "seconds": 157.6,
+      "model_seconds": 156.5,
+      "diagnosis": "The `discount` function is returning 0 instead of 10% off for orders of $1000 or more.",
+      "diff": "",
+      "edit_errors": [
+        "pricing.py: search block matches 2 places; include more surrounding lines",
+        "pricing.py: search block not found in file; copy it exactly from the file"
+      ],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `discount` function is not correctly calculating the discount for orders of $1000 or more. It should return 10% off, but it returns 0.",
+          "files_changed": [],
+          "failed_before": 2,
+          "failed_after": null,
+          "kept": false,
+          "new_failures": [],
+          "diff": "",
+          "edit_errors": [
+            "pricing.py: search block matches 2 places; include more surrounding lines"
+          ]
+        },
+        {
+          "number": 2,
+          "temperature": 0.5,
+          "diagnosis": "The `discount` function is not correctly calculating the discount for orders of $1000 or more. It should return 10% off, but it returns 0.",
+          "files_changed": [],
+          "failed_before": 2,
+          "failed_after": null,
+          "kept": false,
+          "new_failures": [],
+          "diff": "",
+          "edit_errors": [
+            "pricing.py: search block not found in file; copy it exactly from the file"
+          ]
+        },
+        {
+          "number": 3,
+          "temperature": 0.8,
+          "diagnosis": "The `discount` function is returning 0 instead of 10% off for orders of $1000 or more.",
+          "files_changed": [
+            "pricing.py"
+          ],
+          "failed_before": 2,
+          "failed_after": 2,
+          "kept": false,
+          "new_failures": [],
+          "diff": "--- a/pricing.py\n+++ b/pricing.py\n@@ -14,7 +14,7 @@\n def discount(amount):\n     \"\"\"Orders of 1000 or more get 10% off.\"\"\"\n     if amount > BULK_DISCOUNT_MIN:\n-        return round(amount * BULK_DISCOUNT_RATE, 2)\n+        return amount * BULK_DISCOUNT_RATE\n     return 0\n \n \n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "invoice_decimal_places",
+      "title": "Invoice amounts show one decimal place instead of two",
+      "category": "formatting",
+      "language": "python",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 102.0,
+      "model_seconds": 101.0,
+      "diagnosis": "The `format_amount` function is not formatting the amount to two decimal places consistently.",
+      "diff": "--- a/invoice.py\n+++ b/invoice.py\n@@ -3,7 +3,7 @@\n \n def format_amount(amount, currency=\"INR\"):\n     symbol = SYMBOLS.get(currency, currency + \" \")\n-    return f\"{symbol}{amount:,.1f}\"\n+    return f\"{symbol}{amount:,.2f}\"\n \n \n def line_total(price, qty, tax_rate=0.18):\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `format_amount` function is not formatting the amount to two decimal places consistently.",
+          "files_changed": [
+            "invoice.py"
+          ],
+          "failed_before": 3,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/invoice.py\n+++ b/invoice.py\n@@ -3,7 +3,7 @@\n \n def format_amount(amount, currency=\"INR\"):\n     symbol = SYMBOLS.get(currency, currency + \" \")\n-    return f\"{symbol}{amount:,.1f}\"\n+    return f\"{symbol}{amount:,.2f}\"\n \n \n def line_total(price, qty, tax_rate=0.18):\n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "leaderboard_order",
+      "title": "Leaderboard ranks lowest score first",
+      "category": "sort order",
+      "language": "python",
+      "status": "not_fixed",
+      "attempts": 3,
+      "seconds": 279.2,
+      "model_seconds": 277.8,
+      "diagnosis": "The `top` function is returning player names in the wrong order because it does not reverse the sorted list before slicing.",
+      "diff": "--- a/leaderboard.py\n+++ b/leaderboard.py\n@@ -5,4 +5,4 @@\n \n \n def top(scores, n=3):\n-    return [row[\"player\"] for row in rank(scores)[:n]]\n+    return [row[\"player\"] for row in rank(scores)[::-1][:n]]\n",
+      "edit_errors": [
+        "leaderboard.py: search block not found in file; copy it exactly from the file",
+        "leaderboard.py: search block not found in file; copy it exactly from the file"
+      ],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `top` function is returning player names in the wrong order.",
+          "files_changed": [
+            "leaderboard.py"
+          ],
+          "failed_before": 3,
+          "failed_after": 2,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/leaderboard.py\n+++ b/leaderboard.py\n@@ -5,4 +5,4 @@\n \n \n def top(scores, n=3):\n-    return [row[\"player\"] for row in rank(scores)[:n]]\n+    return [row[\"player\"] for row in rank(scores)[::-1][:n]]\n",
+          "edit_errors": []
+        },
+        {
+          "number": 2,
+          "temperature": 0.5,
+          "diagnosis": "The `top` function is returning player names in the wrong order because it does not reverse the sorted list before slicing.",
+          "files_changed": [],
+          "failed_before": 2,
+          "failed_after": null,
+          "kept": false,
+          "new_failures": [],
+          "diff": "",
+          "edit_errors": [
+            "leaderboard.py: search block not found in file; copy it exactly from the file"
+          ]
+        },
+        {
+          "number": 3,
+          "temperature": 0.8,
+          "diagnosis": "The `top` function is returning player names in the wrong order because it does not reverse the sorted list before slicing.",
+          "files_changed": [],
+          "failed_before": 2,
+          "failed_after": null,
+          "kept": false,
+          "new_failures": [],
+          "diff": "",
+          "edit_errors": [
+            "leaderboard.py: search block not found in file; copy it exactly from the file"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mean_integer_division",
+      "title": "Mean truncates because of floor division",
+      "category": "arithmetic",
+      "language": "python",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 79.8,
+      "model_seconds": 78.6,
+      "diagnosis": "The `mean` function is using integer division (`//`), which truncates the decimal part, causing it to return an incorrect result for non-integer means.",
+      "diff": "--- a/stats.py\n+++ b/stats.py\n@@ -1,7 +1,7 @@\n def mean(values):\n     if not values:\n         raise ValueError(\"mean of empty list\")\n-    return sum(values) // len(values)\n+    return sum(values) / len(values)\n \n \n def median(values):\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `mean` function is using integer division (`//`), which truncates the decimal part, causing it to return an incorrect result for non-integer means.",
+          "files_changed": [
+            "stats.py"
+          ],
+          "failed_before": 2,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/stats.py\n+++ b/stats.py\n@@ -1,7 +1,7 @@\n def mean(values):\n     if not values:\n         raise ValueError(\"mean of empty list\")\n-    return sum(values) // len(values)\n+    return sum(values) / len(values)\n \n \n def median(values):\n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "missing_middle_name",
+      "title": "Name formatting crashes when the middle name is missing",
+      "category": "None handling",
+      "language": "python",
+      "status": "not_fixed",
+      "attempts": 3,
+      "seconds": 337.2,
+      "model_seconds": 334.3,
+      "diagnosis": "The `full_name` function is including `None` in the parts list when a middle name is not provided, causing a `TypeError` when trying to join the parts into a string.",
+      "diff": "",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `full_name` function is including `None` in the parts list when a middle name is not provided, causing a `TypeError` when trying to join the parts into a string.",
+          "files_changed": [
+            "users.py"
+          ],
+          "failed_before": 3,
+          "failed_after": 1,
+          "kept": false,
+          "new_failures": [
+            "tests/test_users.py"
+          ],
+          "diff": "--- a/users.py\n+++ b/users.py\n@@ -1,5 +1,5 @@\n def full_name(user):\n-    parts = [user[\"first\"], user.get(\"middle\"), user[\"last\"]]\n+    parts = [user[\"first\"], str(user.get(\"middle\", \\'\\')), user[\"last\"]]\n     return \" \".join(parts)\n \n \n",
+          "edit_errors": []
+        },
+        {
+          "number": 2,
+          "temperature": 0.5,
+          "diagnosis": "The `full_name` function is including `None` in the parts list when a middle name is not provided, causing a `TypeError` when trying to join the parts into a string.",
+          "files_changed": [
+            "users.py"
+          ],
+          "failed_before": 3,
+          "failed_after": 1,
+          "kept": false,
+          "new_failures": [
+            "tests/test_users.py"
+          ],
+          "diff": "--- a/users.py\n+++ b/users.py\n@@ -1,5 +1,5 @@\n def full_name(user):\n-    parts = [user[\"first\"], user.get(\"middle\"), user[\"last\"]]\n+    parts = [user[\"first\"], str(user.get(\"middle\", \\' \\\")), user[\"last\"]]\n     return \" \".join(parts)\n \n \n",
+          "edit_errors": []
+        },
+        {
+          "number": 3,
+          "temperature": 0.8,
+          "diagnosis": "The `full_name` function is including `None` in the parts list when a middle name is not provided, causing a `TypeError` when trying to join the parts into a string.",
+          "files_changed": [
+            "users.py"
+          ],
+          "failed_before": 3,
+          "failed_after": 1,
+          "kept": false,
+          "new_failures": [
+            "tests/test_users.py"
+          ],
+          "diff": "--- a/users.py\n+++ b/users.py\n@@ -1,5 +1,5 @@\n def full_name(user):\n-    parts = [user[\"first\"], user.get(\"middle\"), user[\"last\"]]\n+    parts = [user[\"first\"], str(user.get(\"middle\", \\' \\\")), user[\"last\"]]\n     return \" \".join(parts)\n \n \n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "mutable_default_cart",
+      "title": "Carts share items through a mutable default argument",
+      "category": "shared state",
+      "language": "python",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 70.6,
+      "model_seconds": 69.5,
+      "diagnosis": "The `Cart` class's `__init__` method initializes `items` with a default mutable list, which causes all instances to share the same list.",
+      "diff": "--- a/cart.py\n+++ b/cart.py\n@@ -1,5 +1,7 @@\n class Cart:\n-    def __init__(self, owner, items=[]):\n+    def __init__(self, owner, items=None):\n+        if items is None:\n+            items = []\n         self.owner = owner\n         self.items = items\n \n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `Cart` class's `__init__` method initializes `items` with a default mutable list, which causes all instances to share the same list.",
+          "files_changed": [
+            "cart.py"
+          ],
+          "failed_before": 1,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/cart.py\n+++ b/cart.py\n@@ -1,5 +1,7 @@\n class Cart:\n-    def __init__(self, owner, items=[]):\n+    def __init__(self, owner, items=None):\n+        if items is None:\n+            items = []\n         self.owner = owner\n         self.items = items\n \n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "pagination_off_by_one",
+      "title": "Pagination skips the first page",
+      "category": "off-by-one",
+      "language": "python",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 96.5,
+      "model_seconds": 95.3,
+      "diagnosis": "The `paginate` function is incorrectly calculating the start and end indices for slicing the items list.",
+      "diff": "--- a/pagination.py\n+++ b/pagination.py\n@@ -22,6 +22,6 @@\n         raise ValueError(\"page starts at 1\")\n     if size < 1:\n         raise ValueError(\"size must be positive\")\n-    start = page * size\n+    start = (page - 1) * size\n     end = start + size\n     return Page(items=items[start:end], page=page, size=size, total=len(items))\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `paginate` function is incorrectly calculating the start and end indices for slicing the items list.",
+          "files_changed": [
+            "pagination.py"
+          ],
+          "failed_before": 2,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/pagination.py\n+++ b/pagination.py\n@@ -22,6 +22,6 @@\n         raise ValueError(\"page starts at 1\")\n     if size < 1:\n         raise ValueError(\"size must be positive\")\n-    start = page * size\n+    start = (page - 1) * size\n     end = start + size\n     return Page(items=items[start:end], page=page, size=size, total=len(items))\n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "port_exception_type",
+      "title": "Parser raises a bare Exception instead of ValueError",
+      "category": "exception contract",
+      "language": "python",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 109.1,
+      "model_seconds": 108.0,
+      "diagnosis": "The `parse_port` function attempts to convert non-numeric values to integers, which raises a `ValueError`. The tests check for this behavior correctly.",
+      "diff": "--- a/ports.py\n+++ b/ports.py\n@@ -2,9 +2,9 @@\n     try:\n         port = int(str(value).strip())\n     except ValueError:\n-        raise Exception(f\"invalid port: {value!r}\")\n+        raise ValueError(f\"invalid port: {value!r}\")\n     if not 0 < port < 65536:\n-        raise Exception(f\"port out of range: {port}\")\n+        raise ValueError(f\"port out of range: {port}\")\n     return port\n \n \n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `parse_port` function attempts to convert non-numeric values to integers, which raises a `ValueError`. The tests check for this behavior correctly.",
+          "files_changed": [
+            "ports.py"
+          ],
+          "failed_before": 2,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/ports.py\n+++ b/ports.py\n@@ -2,9 +2,9 @@\n     try:\n         port = int(str(value).strip())\n     except ValueError:\n-        raise Exception(f\"invalid port: {value!r}\")\n+        raise ValueError(f\"invalid port: {value!r}\")\n     if not 0 < port < 65536:\n-        raise Exception(f\"port out of range: {port}\")\n+        raise ValueError(f\"port out of range: {port}\")\n     return port\n \n \n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "renamed_import",
+      "title": "Import broken after a helper was renamed",
+      "category": "import error",
+      "language": "python",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 104.4,
+      "model_seconds": 103.1,
+      "diagnosis": "The `slugify` function is not defined in `textutils.py`, but it is being imported and used in `articles.py`. The correct function name should be `slugify_text`.",
+      "diff": "--- a/articles.py\n+++ b/articles.py\n@@ -1,4 +1,4 @@\n-from textutils import slugify, truncate\n+from textutils import slugify_text, truncate\n \n \n class Article:\n@@ -8,7 +8,7 @@\n \n     @property\n     def slug(self):\n-        return slugify(self.title)\n+        return slugify_text(self.title)\n \n     def preview(self, length=60):\n         return truncate(self.body, length)\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `slugify` function is not defined in `textutils.py`, but it is being imported and used in `articles.py`. The correct function name should be `slugify_text`.",
+          "files_changed": [
+            "articles.py"
+          ],
+          "failed_before": 1,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/articles.py\n+++ b/articles.py\n@@ -1,4 +1,4 @@\n-from textutils import slugify, truncate\n+from textutils import slugify_text, truncate\n \n \n class Article:\n@@ -8,7 +8,7 @@\n \n     @property\n     def slug(self):\n-        return slugify(self.title)\n+        return slugify_text(self.title)\n \n     def preview(self, length=60):\n         return truncate(self.body, length)\n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "restock_mutates_input",
+      "title": "Restock mutates the caller's stock dictionary",
+      "category": "shared state",
+      "language": "python",
+      "status": "fixed",
+      "attempts": 2,
+      "seconds": 181.3,
+      "model_seconds": 179.5,
+      "diagnosis": "The `restock` function is mutating the input dictionary instead of returning a new one.",
+      "diff": "--- a/inventory.py\n+++ b/inventory.py\n@@ -1,8 +1,9 @@\n def restock(stock, deliveries):\n     \"\"\"Returns a new stock mapping; the input is left unchanged.\"\"\"\n+    new_stock = stock.copy()\n     for sku, qty in deliveries.items():\n-        stock[sku] = stock.get(sku, 0) + qty\n-    return stock\n+        new_stock[sku] = new_stock.get(sku, 0) + qty\n+    return new_stock\n \n \n def low_stock(stock, threshold=5):\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `restock` function is mutating the input dictionary instead of returning a new one.",
+          "files_changed": [
+            "inventory.py"
+          ],
+          "failed_before": 1,
+          "failed_after": 2,
+          "kept": false,
+          "new_failures": [
+            "tests/test_inventory.py::test_restock_adds"
+          ],
+          "diff": "--- a/inventory.py\n+++ b/inventory.py\n@@ -1,8 +1,8 @@\n def restock(stock, deliveries):\n     \"\"\"Returns a new stock mapping; the input is left unchanged.\"\"\"\n     for sku, qty in deliveries.items():\n-        stock[sku] = stock.get(sku, 0) + qty\n-    return stock\n+        new_stock[sku] = new_stock.get(sku, 0) + qty\n+    return new_stock\n \n \n def low_stock(stock, threshold=5):\n",
+          "edit_errors": []
+        },
+        {
+          "number": 2,
+          "temperature": 0.5,
+          "diagnosis": "The `restock` function is mutating the input dictionary instead of returning a new one.",
+          "files_changed": [
+            "inventory.py"
+          ],
+          "failed_before": 1,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/inventory.py\n+++ b/inventory.py\n@@ -1,8 +1,9 @@\n def restock(stock, deliveries):\n     \"\"\"Returns a new stock mapping; the input is left unchanged.\"\"\"\n+    new_stock = stock.copy()\n     for sku, qty in deliveries.items():\n-        stock[sku] = stock.get(sku, 0) + qty\n-    return stock\n+        new_stock[sku] = new_stock.get(sku, 0) + qty\n+    return new_stock\n \n \n def low_stock(stock, threshold=5):\n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "retry_attempt_count",
+      "title": "Retry helper makes one attempt fewer than requested",
+      "category": "off-by-one",
+      "language": "python",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 106.4,
+      "model_seconds": 105.3,
+      "diagnosis": "The `retry` function is not correctly handling the number of attempts and is raising a `RetryError` prematurely.",
+      "diff": "--- a/retry.py\n+++ b/retry.py\n@@ -7,7 +7,7 @@\n \n def retry(func, attempts=3, delay=0.0, sleep=time.sleep):\n     last = None\n-    for attempt in range(1, attempts):\n+    for attempt in range(attempts):\n         try:\n             return func()\n         except Exception as exc:\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `retry` function is not correctly handling the number of attempts and is raising a `RetryError` prematurely.",
+          "files_changed": [
+            "retry.py"
+          ],
+          "failed_before": 2,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/retry.py\n+++ b/retry.py\n@@ -7,7 +7,7 @@\n \n def retry(func, attempts=3, delay=0.0, sleep=time.sleep):\n     last = None\n-    for attempt in range(1, attempts):\n+    for attempt in range(attempts):\n         try:\n             return func()\n         except Exception as exc:\n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "tax_rate_units",
+      "title": "Tax computed with percentage instead of fraction (cross-file)",
+      "category": "cross-file contract",
+      "language": "python",
+      "status": "not_fixed",
+      "attempts": 3,
+      "seconds": 244.6,
+      "model_seconds": 242.0,
+      "diagnosis": "The tax amount is being calculated incorrectly in the `tax_amount` function. The tax rate for 'reduced' category should be applied as a percentage of the price, but it's not.",
+      "diff": "--- a/checkout.py\n+++ b/checkout.py\n@@ -2,8 +2,8 @@\n \n \n def tax_amount(price, category=\"standard\"):\n-    return round(price * rate_for(category), 2)\n+    return round(price * (rate_for(category) / 100), 2)\n \n \n def price_with_tax(price, category=\"standard\"):\n-    return round(price + tax_amount(price, category), 2)\n+    return round(price + (tax_amount(price, category) / 100), 2)\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The tax rates are being applied incorrectly in the `tax_amount` and `price_with_tax` functions.",
+          "files_changed": [
+            "checkout.py"
+          ],
+          "failed_before": 2,
+          "failed_after": 1,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/checkout.py\n+++ b/checkout.py\n@@ -2,8 +2,8 @@\n \n \n def tax_amount(price, category=\"standard\"):\n-    return round(price * rate_for(category), 2)\n+    return round(price * (rate_for(category) / 100), 2)\n \n \n def price_with_tax(price, category=\"standard\"):\n-    return round(price + tax_amount(price, category), 2)\n+    return round(price + (tax_amount(price, category) / 100), 2)\n",
+          "edit_errors": []
+        },
+        {
+          "number": 2,
+          "temperature": 0.5,
+          "diagnosis": "The tax rate for 'reduced' category is being applied incorrectly. The tax amount should be calculated as a percentage of the price.",
+          "files_changed": [
+            "checkout.py"
+          ],
+          "failed_before": 1,
+          "failed_after": 1,
+          "kept": false,
+          "new_failures": [
+            "tests/test_checkout.py::test_standard_tax"
+          ],
+          "diff": "--- a/checkout.py\n+++ b/checkout.py\n@@ -2,7 +2,7 @@\n \n \n def tax_amount(price, category=\"standard\"):\n-    return round(price * (rate_for(category) / 100), 2)\n+    return round(price * rate_for(category), 2)\n \n \n def price_with_tax(price, category=\"standard\"):\n",
+          "edit_errors": []
+        },
+        {
+          "number": 3,
+          "temperature": 0.8,
+          "diagnosis": "The tax amount is being calculated incorrectly in the `tax_amount` function. The tax rate for 'reduced' category should be applied as a percentage of the price, but it's not.",
+          "files_changed": [
+            "checkout.py"
+          ],
+          "failed_before": 1,
+          "failed_after": 1,
+          "kept": false,
+          "new_failures": [],
+          "diff": "--- a/checkout.py\n+++ b/checkout.py\n@@ -2,7 +2,7 @@\n \n \n def tax_amount(price, category=\"standard\"):\n-    return round(price * (rate_for(category) / 100), 2)\n+    return round(price * rate_for(category) / 100, 2)\n \n \n def price_with_tax(price, category=\"standard\"):\n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "weekend_check",
+      "title": "Saturdays counted as business days",
+      "category": "boundary condition",
+      "language": "python",
+      "status": "not_fixed",
+      "attempts": 3,
+      "seconds": 433.4,
+      "model_seconds": 430.5,
+      "diagnosis": "The `next_business_day` function incorrectly calculates the next business day, causing it to roll over Saturday instead of moving to Monday.",
+      "diff": "--- a/calendar_utils.py\n+++ b/calendar_utils.py\n@@ -2,7 +2,7 @@\n \n \n def is_weekend(day):\n-    return day.weekday() >= 6\n+    return day.weekday() == 5\n \n \n def next_business_day(day):\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `is_weekend` function incorrectly identifies Saturday as a weekend day.",
+          "files_changed": [
+            "calendar_utils.py"
+          ],
+          "failed_before": 3,
+          "failed_after": 2,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/calendar_utils.py\n+++ b/calendar_utils.py\n@@ -2,7 +2,7 @@\n \n \n def is_weekend(day):\n-    return day.weekday() >= 6\n+    return day.weekday() == 5\n \n \n def next_business_day(day):\n",
+          "edit_errors": []
+        },
+        {
+          "number": 2,
+          "temperature": 0.5,
+          "diagnosis": "The `next_business_day` function incorrectly returns Saturday as the next business day.",
+          "files_changed": [
+            "calendar_utils.py"
+          ],
+          "failed_before": 2,
+          "failed_after": 1,
+          "kept": false,
+          "new_failures": [
+            "tests/test_calendar_utils.py"
+          ],
+          "diff": "--- a/calendar_utils.py\n+++ b/calendar_utils.py\n@@ -8,6 +8,9 @@\n def next_business_day(day):\n     candidate = day + timedelta(days=1)\n     while is_weekend(candidate):\n+        if candidate.weekday() == 5:\n+        candidate += timedelta(days=2)\n+    else:\n         candidate += timedelta(days=1)\n     return candidate\n \n",
+          "edit_errors": []
+        },
+        {
+          "number": 3,
+          "temperature": 0.8,
+          "diagnosis": "The `next_business_day` function incorrectly calculates the next business day, causing it to roll over Saturday instead of moving to Monday.",
+          "files_changed": [
+            "calendar_utils.py"
+          ],
+          "failed_before": 2,
+          "failed_after": 1,
+          "kept": false,
+          "new_failures": [
+            "tests/test_calendar_utils.py"
+          ],
+          "diff": "--- a/calendar_utils.py\n+++ b/calendar_utils.py\n@@ -8,6 +8,9 @@\n def next_business_day(day):\n     candidate = day + timedelta(days=1)\n     while is_weekend(candidate):\n+        if candidate.weekday() == 5:\n+        candidate += timedelta(days=2)\n+    else:\n         candidate += timedelta(days=1)\n     return candidate\n \n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "batch_loop_off_by_one",
+      "title": "Batch total drops the last amount",
+      "category": "off-by-one",
+      "language": "java",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 204.0,
+      "model_seconds": 195.2,
+      "diagnosis": "The `sum` method in `BatchTotals.java` is excluding the last element from the sum calculation.",
+      "diff": "--- a/src/main/java/com/firewatch/bench/batch/BatchTotals.java\n+++ b/src/main/java/com/firewatch/bench/batch/BatchTotals.java\n@@ -11,7 +11,7 @@\n     /** Returns the sum of every amount in the batch, in cents. */\n     public static int sum(List<Integer> amounts) {\n         int total = 0;\n-        for (int i = 0; i < amounts.size() - 1; i++) {\n+        for (int i = 0; i < amounts.size(); i++) {\n             total += amounts.get(i);\n         }\n         return total;\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `sum` method in `BatchTotals.java` is excluding the last element from the sum calculation.",
+          "files_changed": [
+            "src/main/java/com/firewatch/bench/batch/BatchTotals.java"
+          ],
+          "failed_before": 3,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/src/main/java/com/firewatch/bench/batch/BatchTotals.java\n+++ b/src/main/java/com/firewatch/bench/batch/BatchTotals.java\n@@ -11,7 +11,7 @@\n     /** Returns the sum of every amount in the batch, in cents. */\n     public static int sum(List<Integer> amounts) {\n         int total = 0;\n-        for (int i = 0; i < amounts.size() - 1; i++) {\n+        for (int i = 0; i < amounts.size(); i++) {\n             total += amounts.get(i);\n         }\n         return total;\n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "free_shipping_boundary",
+      "title": "Free shipping starts one cent above the threshold",
+      "category": "boundary condition",
+      "language": "java",
+      "status": "not_fixed",
+      "attempts": 3,
+      "seconds": 561.1,
+      "model_seconds": 541.5,
+      "diagnosis": "The `orderAtTheThresholdShipsFree` test expects shipping to be free when the subtotal is exactly at the free-shipping threshold (5000 cents), but it incorrectly returns the standard shipping cost of 599 cents.",
+      "diff": "",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `orderAtTheThresholdShipsFree` test expects shipping to be free when the subtotal is exactly at the free-shipping threshold (5000 cents), but it incorrectly returns the standard shipping cost of 599 cents.",
+          "files_changed": [
+            "src/main/java/com/firewatch/bench/shipping/ShippingPolicy.java"
+          ],
+          "failed_before": 1,
+          "failed_after": 2,
+          "kept": false,
+          "new_failures": [],
+          "diff": "--- a/src/main/java/com/firewatch/bench/shipping/ShippingPolicy.java\n+++ b/src/main/java/com/firewatch/bench/shipping/ShippingPolicy.java\n@@ -14,7 +14,7 @@\n         if (subtotalCents > FREE_SHIPPING_CENTS) {\n             return 0;\n         }\n-        return STANDARD_SHIPPING_CENTS;\n+        return 0;\n     }\n \n     /** Returns the order total including shipping. */\n",
+          "edit_errors": []
+        },
+        {
+          "number": 2,
+          "temperature": 0.5,
+          "diagnosis": "The `orderAtTheThresholdShipsFree` test expects shipping to be free when the subtotal is exactly at the free-shipping threshold (5000 cents), but it incorrectly returns the standard shipping cost of 599 cents.",
+          "files_changed": [
+            "src/main/java/com/firewatch/bench/shipping/ShippingPolicy.java"
+          ],
+          "failed_before": 1,
+          "failed_after": 2,
+          "kept": false,
+          "new_failures": [],
+          "diff": "--- a/src/main/java/com/firewatch/bench/shipping/ShippingPolicy.java\n+++ b/src/main/java/com/firewatch/bench/shipping/ShippingPolicy.java\n@@ -14,7 +14,7 @@\n         if (subtotalCents > FREE_SHIPPING_CENTS) {\n             return 0;\n         }\n-        return STANDARD_SHIPPING_CENTS;\n+        return 0;\n     }\n \n     /** Returns the order total including shipping. */\n",
+          "edit_errors": []
+        },
+        {
+          "number": 3,
+          "temperature": 0.8,
+          "diagnosis": "The `orderAtTheThresholdShipsFree` test expects shipping to be free when the subtotal is exactly at the free-shipping threshold (5000 cents), but it incorrectly returns the standard shipping cost of 599 cents.",
+          "files_changed": [
+            "src/main/java/com/firewatch/bench/shipping/ShippingPolicy.java"
+          ],
+          "failed_before": 1,
+          "failed_after": 2,
+          "kept": false,
+          "new_failures": [],
+          "diff": "--- a/src/main/java/com/firewatch/bench/shipping/ShippingPolicy.java\n+++ b/src/main/java/com/firewatch/bench/shipping/ShippingPolicy.java\n@@ -4,7 +4,7 @@\n public final class ShippingPolicy {\n \n     public static final int FREE_SHIPPING_CENTS = 5000;\n-    public static final int STANDARD_SHIPPING_CENTS = 599;\n+    public static final int STANDARD_SHIPPING_CENTS = 0;\n \n     private ShippingPolicy() {\n     }\n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "missing_middle_null",
+      "title": "Name formatting crashes when the middle name is missing",
+      "category": "null handling",
+      "language": "java",
+      "status": "fixed",
+      "attempts": 2,
+      "seconds": 304.2,
+      "model_seconds": 291.0,
+      "diagnosis": "The `fullName` method is incorrectly handling null middle names by invoking `isEmpty()` on them, which leads to a NullPointerException.",
+      "diff": "--- a/src/main/java/com/firewatch/bench/customers/CustomerDirectory.java\n+++ b/src/main/java/com/firewatch/bench/customers/CustomerDirectory.java\n@@ -18,7 +18,7 @@\n     public String fullName(String id) {\n         Customer customer = customers.get(id);\n         String middle = customer.middle();\n-        if (middle.isEmpty()) {\n+        if (middle == null || middle.isEmpty()) {\n             return customer.first() + \" \" + customer.last();\n         }\n         return customer.first() + \" \" + middle + \" \" + customer.last();\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The `fullName` method is trying to invoke `isEmpty()` on a potentially null `middle` string.",
+          "files_changed": [
+            "src/main/java/com/firewatch/bench/customers/CustomerDirectory.java"
+          ],
+          "failed_before": 2,
+          "failed_after": 2,
+          "kept": false,
+          "new_failures": [],
+          "diff": "--- a/src/main/java/com/firewatch/bench/customers/CustomerDirectory.java\n+++ b/src/main/java/com/firewatch/bench/customers/CustomerDirectory.java\n@@ -18,7 +18,7 @@\n     public String fullName(String id) {\n         Customer customer = customers.get(id);\n         String middle = customer.middle();\n-        if (middle.isEmpty()) {\n+        if (middle != null && middle.isEmpty()) {\n             return customer.first() + \" \" + customer.last();\n         }\n         return customer.first() + \" \" + middle + \" \" + customer.last();\n",
+          "edit_errors": []
+        },
+        {
+          "number": 2,
+          "temperature": 0.5,
+          "diagnosis": "The `fullName` method is incorrectly handling null middle names by invoking `isEmpty()` on them, which leads to a NullPointerException.",
+          "files_changed": [
+            "src/main/java/com/firewatch/bench/customers/CustomerDirectory.java"
+          ],
+          "failed_before": 2,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/src/main/java/com/firewatch/bench/customers/CustomerDirectory.java\n+++ b/src/main/java/com/firewatch/bench/customers/CustomerDirectory.java\n@@ -18,7 +18,7 @@\n     public String fullName(String id) {\n         Customer customer = customers.get(id);\n         String middle = customer.middle();\n-        if (middle.isEmpty()) {\n+        if (middle == null || middle.isEmpty()) {\n             return customer.first() + \" \" + customer.last();\n         }\n         return customer.first() + \" \" + middle + \" \" + customer.last();\n",
+          "edit_errors": []
+        }
+      ]
+    }
+  ]
+}
