@@ -12,37 +12,62 @@ from .patcher import Snapshot, apply_edits
 from .verifier import run_tests
 
 TEST_COMMAND = "python -m pytest -q -p no:cacheprovider"
+MAVEN_TEST_COMMAND = "mvn -q -B test"
 
 
-def load_cases(cases_dir, only=None):
+def _test_command(case_dir, meta):
+    if meta.get("test_command"):
+        return meta["test_command"]
+    if (case_dir / "pom.xml").is_file():
+        return MAVEN_TEST_COMMAND
+    return TEST_COMMAND
+
+
+def load_cases(cases_dirs, only=None):
+    if isinstance(cases_dirs, (str, Path)):
+        cases_dirs = [cases_dirs]
     cases = []
-    for case_dir in sorted(Path(cases_dir).iterdir()):
-        meta_path = case_dir / "case.json"
-        if not case_dir.is_dir() or not meta_path.exists():
+    for cases_dir in cases_dirs:
+        root = Path(cases_dir)
+        if not root.is_dir():
             continue
-        if only and case_dir.name not in only:
-            continue
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        meta["name"] = case_dir.name
-        meta["path"] = case_dir
-        cases.append(meta)
+        for case_dir in sorted(root.iterdir()):
+            meta_path = case_dir / "case.json"
+            if not case_dir.is_dir() or not meta_path.exists():
+                continue
+            if only and case_dir.name not in only:
+                continue
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            meta["name"] = case_dir.name
+            meta["path"] = case_dir
+            meta["test_command"] = _test_command(case_dir, meta)
+            cases.append(meta)
     return cases
+
+
+def missing_tool(case):
+    tool = case["test_command"].split()[0]
+    if tool in ("python", "python3"):
+        return None
+    return None if shutil.which(tool) else tool
 
 
 def _workspace(case):
     target = Path(tempfile.mkdtemp(prefix=f"fw-{case['name']}-"))
-    shutil.copytree(case["path"], target, dirs_exist_ok=True, ignore=shutil.ignore_patterns("case.json", "__pycache__"))
+    shutil.copytree(
+        case["path"], target, dirs_exist_ok=True, ignore=shutil.ignore_patterns("case.json", "__pycache__", "target")
+    )
     return target
 
 
 def validate_case(case):
     work = _workspace(case)
     try:
-        before = run_tests(str(work), TEST_COMMAND, 120)
+        before = run_tests(str(work), case["test_command"], 600)
         snapshot = Snapshot(work)
         outcomes = apply_edits(str(work), case.get("solution", []), snapshot)
         applied = all(o.ok for o in outcomes)
-        after = run_tests(str(work), TEST_COMMAND, 120)
+        after = run_tests(str(work), case["test_command"], 600)
         problems = [o.reason for o in outcomes if not o.ok]
         if not after.passed:
             problems.append(after.output[-400:])
@@ -100,6 +125,18 @@ def run_benchmark(cases_dir, out_dir, settings, only=None, validate=False, log=p
         log(f"No cases found in {cases_dir}")
         return 1
 
+    runnable = []
+    for case in cases:
+        tool = missing_tool(case)
+        if tool:
+            log(f"Skipping {case['name']}: '{tool}' is not on PATH")
+        else:
+            runnable.append(case)
+    cases = runnable
+    if not cases:
+        log("No runnable cases.")
+        return 1
+
     if validate:
         bad = 0
         for case in cases:
@@ -121,7 +158,7 @@ def run_benchmark(cases_dir, out_dir, settings, only=None, validate=False, log=p
         log(f"[{index}/{len(cases)}] {case['name']} ({case.get('category', '')})")
         started = time.monotonic()
         try:
-            result = run_agent(str(work), TEST_COMMAND, llm, settings, log=lambda m: log(f"    {m}"))
+            result = run_agent(str(work), case["test_command"], llm, settings, log=lambda m: log(f"    {m}"))
         finally:
             elapsed = time.monotonic() - started
         rows.append(
@@ -129,6 +166,7 @@ def run_benchmark(cases_dir, out_dir, settings, only=None, validate=False, log=p
                 "name": case["name"],
                 "title": case.get("title", ""),
                 "category": case.get("category", ""),
+                "language": "java" if case["test_command"] == MAVEN_TEST_COMMAND else "python",
                 "status": result.status,
                 "attempts": len(result.attempts),
                 "seconds": round(elapsed, 1),
