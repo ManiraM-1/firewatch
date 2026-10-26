@@ -83,3 +83,88 @@ def test_all_down_raises():
     down = ProviderConfig("ollama", "http://127.0.0.1:9/v1", "m", native_ollama=True)
     with pytest.raises(LLMError, match="All providers failed"):
         LLMClient([down], 0.2, 2).complete([{"role": "user", "content": "hi"}])
+
+
+class FlakyServer:
+    def __init__(self, codes):
+        self.codes = list(codes)
+        self.hits = 0
+        outer = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_POST(self):
+                self.rfile.read(int(self.headers["Content-Length"]))
+                outer.hits += 1
+                code = outer.codes.pop(0) if outer.codes else 200
+                if code != 200:
+                    data = b'{"error": "slow down"}'
+                    self.send_response(code)
+                    self.send_header("Retry-After", "7")
+                else:
+                    data = json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode()
+                    self.send_response(200)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+        self.httpd = HTTPServer(("127.0.0.1", 0), Handler)
+        self.url = f"http://127.0.0.1:{self.httpd.server_port}/v1"
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+
+
+def test_rate_limit_waits_and_retries(monkeypatch):
+    import firewatch.llm as llm_module
+
+    waits = []
+    monkeypatch.setattr(llm_module, "_sleep", waits.append)
+    server = FlakyServer([429, 429])
+    try:
+        text, _, _ = LLMClient([ProviderConfig("remote", server.url, "m")], 0.2, 5).complete([{"role": "user", "content": "hi"}])
+    finally:
+        server.httpd.shutdown()
+    assert text == "ok"
+    assert server.hits == 3
+    assert waits == [7.0, 7.0]
+
+
+def test_auth_errors_are_not_retried(monkeypatch):
+    import firewatch.llm as llm_module
+
+    monkeypatch.setattr(llm_module, "_sleep", lambda _s: None)
+    server = FlakyServer([401])
+    try:
+        with pytest.raises(LLMError, match="HTTP 401"):
+            LLMClient([ProviderConfig("remote", server.url, "m")], 0.2, 5).complete([{"role": "user", "content": "hi"}])
+    finally:
+        server.httpd.shutdown()
+    assert server.hits == 1
+
+
+def test_requests_identify_as_firewatch(monkeypatch):
+    import io
+
+    import firewatch.llm as llm_module
+
+    seen = {}
+
+    class Response(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    def fake_urlopen(request, timeout=None):
+        seen.update({k.lower(): v for k, v in request.header_items()})
+        return Response(json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode())
+
+    monkeypatch.setattr(llm_module.urllib.request, "urlopen", fake_urlopen)
+    LLMClient([ProviderConfig("remote", "https://api.example.com/v1", "m", api_key="k")], 0.2, 5).complete(
+        [{"role": "user", "content": "hi"}]
+    )
+    assert seen["user-agent"].startswith("firewatch/")
+    assert "urllib" not in seen["user-agent"].lower()
+    assert seen["authorization"] == "Bearer k"

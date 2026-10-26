@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .agent import run_agent
 from .config import load_settings
-from .llm import LLMClient, LLMError
+from .llm import LLMClient, LLMError, request_headers
 from .report import render_markdown
 
 DEFAULT_TEST = "python -m pytest -q"
@@ -70,7 +70,7 @@ def cmd_doctor(args):
     healthy = 0
     for provider in settings.providers:
         url = provider.base_url.rstrip("/") + "/models"
-        headers = {"Authorization": f"Bearer {provider.api_key}"} if provider.api_key else {}
+        headers = request_headers(provider.api_key)
         try:
             with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=10) as response:
                 data = json.loads(response.read().decode("utf-8"))

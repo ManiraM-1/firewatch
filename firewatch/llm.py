@@ -3,24 +3,55 @@ import time
 import urllib.error
 import urllib.request
 
+from . import __version__
+
 
 class LLMError(Exception):
     pass
 
 
-def _send(provider, url, body, timeout):
-    headers = {"Content-Type": "application/json"}
-    if provider.api_key:
-        headers["Authorization"] = f"Bearer {provider.api_key}"
-    request = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
+USER_AGENT = f"firewatch/{__version__} (+https://github.com/ManiraM-1/firewatch)"
+RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+MAX_RETRIES = 4
+MAX_WAIT_SECONDS = 60
+_sleep = time.sleep
+
+
+def _retry_after(exc, attempt):
+    header = exc.headers.get("Retry-After") if exc.headers else None
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:500]
-        raise LLMError(f"{provider.name} returned HTTP {exc.code}: {detail}") from exc
-    except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
-        raise LLMError(f"{provider.name} unreachable at {url}: {exc}") from exc
+        wait = float(header)
+    except (TypeError, ValueError):
+        wait = 5 * (2**attempt)
+    return max(1.0, min(wait, MAX_WAIT_SECONDS))
+
+
+def request_headers(api_key=""):
+    headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
+
+
+def _send(provider, url, body, timeout):
+    headers = request_headers(provider.api_key)
+    headers["Content-Type"] = "application/json"
+    data = json.dumps(body).encode("utf-8")
+    for attempt in range(MAX_RETRIES + 1):
+        request = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:500]
+            if exc.code in RETRYABLE_STATUS and attempt < MAX_RETRIES:
+                wait = _retry_after(exc, attempt)
+                print(f"[firewatch] {provider.name} returned HTTP {exc.code}; retrying in {wait:.0f}s", flush=True)
+                _sleep(wait)
+                continue
+            raise LLMError(f"{provider.name} returned HTTP {exc.code}: {detail}") from exc
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+            raise LLMError(f"{provider.name} unreachable at {url}: {exc}") from exc
 
 
 def ollama_native_url(base_url):
