@@ -1,0 +1,38 @@
+name: Firewatch
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+concurrency:
+  group: firewatch-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  heal:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      !startsWith(github.event.workflow_run.head_branch, 'firewatch/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - uses: YOUR_GITHUB_USERNAME/firewatch@main
+        with:
+          test-command: python -m pytest -q
+          llm-base-url: ${{ secrets.FIREWATCH_LLM_BASE_URL }}
+          llm-api-key: ${{ secrets.FIREWATCH_LLM_API_KEY }}
+          llm-model: ${{ vars.FIREWATCH_LLM_MODEL }}
