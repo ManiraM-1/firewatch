@@ -95,3 +95,53 @@ def test_benchmark_with_oracle_model_fixes_every_case(tmp_path, settings):
     result = json.loads(next(Path(tmp_path).glob("*.json")).read_text())
     assert result["summary"]["fixed"] == result["summary"]["total"] == 14
     assert (Path(tmp_path) / "latest.md").exists()
+
+
+def test_retries_escalate_temperature_and_flag_repeated_diagnosis(case_repo, settings):
+    repo, solution = case_repo("leaderboard_order")
+    wrong = [{"file": "leaderboard.py", "search": "def top(scores, n=3):", "replace": "def top(scores, n=2):"}]
+    llm = ScriptedLLM([as_reply(wrong, "top returns names"), as_reply(wrong, "top returns names"), as_reply(solution, "sort is ascending")])
+    result = run_agent(str(repo), TEST_CMD, llm, settings)
+    assert result.status == "fixed"
+    assert llm.temperatures == [0.2, 0.5, 0.8]
+    assert [a.temperature for a in result.attempts] == [0.2, 0.5, 0.8]
+    third_prompt = llm.calls[2][1]["content"]
+    assert "probably wrong" in third_prompt
+    assert "already tried and failed" in third_prompt
+
+
+def test_benchmark_records_every_attempt(tmp_path, settings):
+    import json
+
+    def factory(case):
+        bad = [{"file": case["solution"][0]["file"], "search": case["solution"][0]["search"], "replace": case["solution"][0]["search"] + "  "}]
+        return ScriptedLLM([as_reply(bad, "first idea"), as_reply(case["solution"], "second idea")])
+
+    run_benchmark(str(CASES), str(tmp_path), settings, only=["weekend_check"], llm_factory=factory, log=lambda _m: None)
+    data = json.loads(next(Path(tmp_path).glob("*.json")).read_text())
+    log = data["cases"][0]["attempt_log"]
+    assert [a["diagnosis"] for a in log] == ["first idea", "second idea"]
+    assert data["retry_temperatures"] == [0.2, 0.5, 0.8]
+
+
+def test_change_that_breaks_a_passing_test_is_reverted(case_repo, settings):
+    repo, solution = case_repo("tax_rate_units")
+    contract_break = [{"file": "tax.py", "search": 'GST_RATES = {"standard": 18, "reduced": 5, "exempt": 0}', "replace": 'GST_RATES = {"standard": 0.18, "reduced": 0.05, "exempt": 0}'}]
+    llm = ScriptedLLM([as_reply(contract_break, "rates should be fractions"), as_reply(solution, "checkout must divide by 100")])
+    result = run_agent(str(repo), TEST_CMD, llm, settings)
+    first = result.attempts[0]
+    assert not first.kept
+    assert first.new_failures == ["tests/test_tax.py::test_rates_are_percentages"]
+    assert '"standard": 18' in (repo / "tax.py").read_text()
+    assert "broke tests that were passing" in llm.calls[1][1]["content"]
+    assert result.status == "fixed" and result.changed_files == ["checkout.py"]
+
+
+def test_judge_progress():
+    from firewatch.agent import judge_progress
+
+    assert judge_progress({"a", "b"}, {"a"}, 2, 1) == (True, set())
+    assert judge_progress({"a", "b"}, {"a", "c"}, 2, 2) == (False, {"c"})
+    assert judge_progress({"a", "b"}, {"c"}, 2, 1) == (False, {"c"})
+    assert judge_progress({"a"}, {"a"}, 1, 1) == (False, set())
+    assert judge_progress(set(), set(), 3, 2) == (True, set())

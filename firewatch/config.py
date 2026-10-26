@@ -22,6 +22,7 @@ class Settings:
     providers: list = field(default_factory=list)
     max_attempts: int = 3
     temperature: float = 0.2
+    retry_temperatures: list = field(default_factory=lambda: [0.2, 0.5, 0.8])
     request_timeout: int = 300
     test_timeout: int = 600
     allow_test_edits: bool = False
@@ -68,6 +69,7 @@ def load_settings(env_file=".env"):
         providers=providers,
         max_attempts=int(_env("FIREWATCH_MAX_ATTEMPTS", "3")),
         temperature=float(_env("FIREWATCH_TEMPERATURE", "0.2")),
+        retry_temperatures=[float(t) for t in _env("FIREWATCH_RETRY_TEMPERATURES", "0.2,0.5,0.8").split(",") if t.strip()],
         request_timeout=int(_env("FIREWATCH_REQUEST_TIMEOUT", "300")),
         test_timeout=int(_env("FIREWATCH_TEST_TIMEOUT", "600")),
         allow_test_edits=_env("FIREWATCH_ALLOW_TEST_EDITS", "false").lower() == "true",

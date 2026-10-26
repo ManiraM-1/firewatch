@@ -50,16 +50,33 @@ def build_messages(failure_excerpt, context_text, history, allow_test_edits=Fals
     parts += ["## Relevant files", context_text.strip() or "(no files could be located)"]
     if history:
         parts.append("## Previous attempts (all failed; do not repeat them)")
+        parts.append(
+            "Each attempt below did not make the tests pass, so its diagnosis is probably wrong or incomplete. "
+            "Before proposing edits, re-read the failing assertions: compare the expected value with the actual "
+            "value and work out which line of code produces the actual value. Consider a different root cause "
+            "from the ones already tried."
+        )
+        seen = set()
         for item in history:
             parts.append(f"### Attempt {item['attempt']}")
             if item.get("diagnosis"):
                 parts.append(f"Diagnosis: {item['diagnosis']}")
+                key = item["diagnosis"].strip().lower()
+                if key in seen:
+                    parts.append("This diagnosis was already tried and failed. Do not use it again.")
+                seen.add(key)
             if item.get("edit_errors"):
                 parts.append("Edits that could not be applied:\n" + "\n".join(f"- {e}" for e in item["edit_errors"]))
             if item.get("diff"):
                 parts += ["Change tried:", "```diff", item["diff"].strip()[:3000], "```"]
             if item.get("kept"):
                 parts.append("This change reduced the failures and has been kept in the files above.")
+            if item.get("broke"):
+                parts.append(
+                    "This change broke tests that were passing before, so it was reverted: "
+                    + ", ".join(item["broke"])
+                    + ". Those tests define behaviour that must be preserved."
+                )
             if item.get("result_excerpt"):
                 parts += ["Test output after that change:", "```", item["result_excerpt"].strip()[:3000], "```"]
     parts.append("Return the JSON object now.")

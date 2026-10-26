@@ -137,6 +137,21 @@ def run_benchmark(cases_dir, out_dir, settings, only=None, validate=False, log=p
                 "diff": result.final_diff,
                 "edit_errors": [e for a in result.attempts for e in a.edit_errors],
                 "model": result.model,
+                "attempt_log": [
+                    {
+                        "number": a.number,
+                        "temperature": a.temperature,
+                        "diagnosis": a.diagnosis,
+                        "files_changed": a.files_changed,
+                        "failed_before": a.failed_before,
+                        "failed_after": a.failed_after,
+                        "kept": a.kept,
+                        "new_failures": a.new_failures,
+                        "diff": a.diff,
+                        "edit_errors": a.edit_errors,
+                    }
+                    for a in result.attempts
+                ],
             }
         )
         log(f"    -> {result.status} in {len(result.attempts)} attempt(s), {elapsed:.0f}s")
@@ -150,7 +165,13 @@ def run_benchmark(cases_dir, out_dir, settings, only=None, validate=False, log=p
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     stamp = time.strftime("%Y%m%d-%H%M%S")
-    payload = {"model": model_name, "max_attempts": settings.max_attempts, "summary": summary, "cases": rows}
+    payload = {
+        "model": model_name,
+        "max_attempts": settings.max_attempts,
+        "retry_temperatures": settings.retry_temperatures,
+        "summary": summary,
+        "cases": rows,
+    }
     json_path = out / f"{stamp}-{_slug(model_name)}.json"
     json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     table = render_table(model_name, summary, rows)

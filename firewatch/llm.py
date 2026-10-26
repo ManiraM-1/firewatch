@@ -72,12 +72,13 @@ class LLMClient:
     def describe(self):
         return ", ".join(f"{p.name}:{p.model}" for p in self.providers)
 
-    def complete(self, messages):
+    def complete(self, messages, temperature=None):
         errors = []
+        temperature = self.temperature if temperature is None else temperature
         for provider in self.providers:
             started = time.monotonic()
             try:
-                text = _post_chat(provider, messages, self.temperature, self.timeout)
+                text = _post_chat(provider, messages, temperature, self.timeout)
             except LLMError as exc:
                 errors.append(str(exc))
                 continue
@@ -95,8 +96,9 @@ class ScriptedLLM:
     def describe(self):
         return f"{self.last_provider.name}:{self.last_provider.model}"
 
-    def complete(self, messages):
+    def complete(self, messages, temperature=None):
         self.calls.append(messages)
+        self.temperatures = getattr(self, "temperatures", []) + [temperature]
         if not self.responses:
             raise LLMError("ScriptedLLM ran out of responses")
         response = self.responses.pop(0)

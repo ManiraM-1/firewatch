@@ -24,7 +24,9 @@ class Attempt:
     diff: str = ""
     model_seconds: float = 0.0
     test_seconds: float = 0.0
+    temperature: float = 0.0
     context_files: list = field(default_factory=list)
+    new_failures: list = field(default_factory=list)
 
 
 @dataclass
@@ -80,6 +82,7 @@ def run_agent(
 
     triage = triage_log(baseline.output, repo_root)
     current_failed = baseline.failed_count
+    current_failing = set(triage.failing_tests)
     log(f"Reproduced: {current_failed} failing. Located {len(triage.file_refs)} code references.")
 
     result = RunResult(
@@ -104,8 +107,10 @@ def run_agent(
             allow_test_edits=settings.allow_test_edits,
             ci_excerpt=ci_triage.excerpt if ci_triage else None,
         )
+        temperatures = settings.retry_temperatures or [settings.temperature]
+        attempt.temperature = temperatures[min(number - 1, len(temperatures) - 1)]
         try:
-            raw, provider, seconds = llm.complete(messages)
+            raw, provider, seconds = llm.complete(messages, temperature=attempt.temperature)
         except LLMError as exc:
             result.status = "error"
             result.message = str(exc)
@@ -159,12 +164,18 @@ def run_agent(
             break
 
         after = triage_log(run.output, repo_root)
-        if not run.timed_out and run.failed_count < current_failed:
+        improved, broken = judge_progress(current_failing, set(after.failing_tests), current_failed, run.failed_count)
+        attempt.new_failures = sorted(broken)
+        if not run.timed_out and improved:
             attempt.kept = True
             snapshot.commit()
             current_failed = run.failed_count
+            current_failing = set(after.failing_tests)
             triage = after
             log(f"Partial progress: {attempt.failed_before} -> {run.failed_count} failing. Keeping the change.")
+        elif broken:
+            snapshot.restore()
+            log(f"Broke tests that were passing ({', '.join(sorted(broken))}). Reverting this attempt.")
         else:
             snapshot.restore()
             log(f"Still failing ({run.failed_count}). Reverting this attempt.")
@@ -177,6 +188,7 @@ def run_agent(
                 "edit_errors": attempt.edit_errors,
                 "diff": attempt.diff,
                 "kept": attempt.kept,
+                "broke": attempt.new_failures,
                 "result_excerpt": after.excerpt,
             }
         )
@@ -195,6 +207,15 @@ def run_agent(
 
     result.duration = time.monotonic() - started
     return result
+
+
+def judge_progress(failing_before, failing_after, count_before, count_after):
+    if failing_before and (failing_after or count_after == 0):
+        broken = failing_after - failing_before
+        if broken:
+            return False, broken
+        return failing_after < failing_before, set()
+    return count_after < count_before, set()
 
 
 def _differs(repo_root, rel, original):
