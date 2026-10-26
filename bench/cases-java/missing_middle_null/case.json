@@ -1,0 +1,11 @@
+{
+  "title": "Name formatting crashes when the middle name is missing",
+  "category": "null handling",
+  "solution": [
+    {
+      "file": "src/main/java/com/firewatch/bench/customers/CustomerDirectory.java",
+      "search": "        if (middle.isEmpty()) {",
+      "replace": "        if (middle == null || middle.isEmpty()) {"
+    }
+  ]
+}

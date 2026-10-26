@@ -64,7 +64,7 @@ These are the choices that made the difference between a demo and something I'd 
 
 ## Benchmark
 
-A fix rate measured against nothing tells you nothing, so Firewatch ships with a benchmark of 14 seeded bugs in `bench/cases`. Each one is a small realistic module with a test suite, and each bug category is one I've seen break real CI:
+A fix rate measured against nothing tells you nothing, so Firewatch ships with a benchmark of 17 seeded bugs across `bench/cases` (Python/pytest) and `bench/cases-java` (Java 17/Maven). Each one is a small realistic module with a test suite, and each bug category is one I've seen break real CI:
 
 | Category | Cases |
 |---|---|
@@ -80,7 +80,9 @@ A fix rate measured against nothing tells you nothing, so Firewatch ships with a
 | Formatting | one decimal place instead of two |
 | Cross-file contract | tax module returns percentages, checkout treats them as fractions; the test pins the tax module's contract, so the fix must go in the other file |
 
-`firewatch bench --validate` checks that every case fails before and passes with its reference fix. The reference fixes live in `case.json`, which is never copied into the workspace the model sees.
+The three Java cases use JUnit 5 and a standard Maven layout. They cover an off-by-one loop bound, a shipping threshold where `>` should be `>=`, and a missing null guard that throws a `NullPointerException`. The runner picks `mvn -q test` automatically when a case contains a `pom.xml`, or uses an explicit `test_command` from `case.json`. Java cases need a JDK 17+ and Maven on `PATH`; run only the Python suite with `--cases bench/cases`.
+
+`firewatch bench --validate` checks that every case in both suites fails before and passes with its reference fix. The reference fixes live in `case.json`, which is never copied into the workspace the model sees.
 
 ### Results
 
@@ -106,7 +108,8 @@ Pull a coding model with [Ollama](https://ollama.com) (`ollama pull qwen2.5-code
 ```bash
 firewatch doctor                                  # checks every configured provider answers
 firewatch fix --repo path/to/repo --report fix.md # reproduce, fix, verify
-firewatch bench                                   # run the benchmark
+firewatch bench                                   # run both suites
+firewatch bench --cases bench/cases-java          # run only the Java cases
 firewatch bench --only tax_rate_units             # run one case
 ```
 
@@ -170,8 +173,8 @@ jobs:
 
 ```
 firewatch/
-  triage.py     log cleaning, error extraction, file:line references, pytest summary parsing
-  context.py    retrieval: traceback files, AST-based import following, windowing, budget
+  triage.py     log cleaning, error extraction, file:line references, pytest/Maven summary parsing
+  context.py    retrieval: traceback files, import and same-package following, windowing, budget
   fixer.py      prompt construction with attempt history, tolerant JSON parsing
   patcher.py    safe search/replace with whitespace and indentation recovery, snapshots
   verifier.py   runs the test command and counts failures
@@ -180,7 +183,8 @@ firewatch/
   github.py     minimal GitHub REST client (standard library only)
   bench.py      benchmark runner and report
 tests/          unit and end-to-end tests, including a real git push to a local remote
-bench/cases/    14 seeded-bug cases
+bench/cases/    14 Python seeded-bug cases
+bench/cases-java/ 3 Java/JUnit seeded-bug cases
 examples/       demo repository with CI and Firewatch workflows
 ```
 
@@ -188,7 +192,7 @@ The test suite runs the whole agent loop end to end with a scripted model, inclu
 
 ## Limitations
 
-- The benchmark is Python and pytest only. Triage already resolves `file:line` references from Java, Go, JS and Ruby output (including bare filenames like `Cart.java:42` from JVM stack traces), but import-following retrieval is Python only.
+- The benchmark covers Python/pytest and Java/Maven. Triage resolves `file:line` references from Java, Go, JS and Ruby output (including bare filenames like `Cart.java:42` from JVM stack traces); retrieval follows imports and same-package classes for Python and Java, and relies on traceback references for other languages.
 - Bugs that need a design decision, not a code fix, are out of scope. Firewatch reports a diagnosis and stops.
 - The fix is verified against your test suite, so it's only as good as your tests. That's why the PR is a PR and not a direct push.
 

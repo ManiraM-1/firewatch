@@ -10,7 +10,8 @@ PYTEST_LOCATION = re.compile(r"^([\w./\\-]+\.py):(\d+):", re.MULTILINE)
 GENERIC_LOCATION = re.compile(r"([\w./\\-]+\.(?:py|java|kt|js|ts|go|rb)):(\d+)")
 PYTEST_FAILED = re.compile(r"^(?:FAILED|ERROR) ([\w./\\-]+\.py)(?:::([\w\[\]\-.:]+))?", re.MULTILINE)
 SIGNAL_LINE = re.compile(
-    r"(Error|Exception|Traceback|FAILED|FAIL:|AssertionError|assert |E   |error:|panic:|Caused by)"
+    r"(Error|Exception|Traceback|FAILED|FAIL:|AssertionError|assert |E   |error:|panic:|Caused by"
+    r"|\[ERROR\]|<<< (?:FAILURE|ERROR)!)"
 )
 
 
@@ -167,12 +168,23 @@ SUMMARY_LINE = re.compile(
     r"^(?:=+ )?((?:\d+ \w+(?:, )?)+|no tests ran)(?: in [\d.]+s)(?: \([^)]*\))?(?: =+)?\s*$", re.MULTILINE
 )
 SUMMARY_PART = re.compile(r"(\d+) (passed|failed|errors?|skipped|xfailed|xpassed|warnings?)")
+MAVEN_SUMMARY = re.compile(r"Tests run: (\d+), Failures: (\d+), Errors: (\d+)(?:, Skipped: (\d+))?")
 
 
 def summary_counts(text):
-    matches = SUMMARY_LINE.findall(clean_log(text))
+    cleaned = clean_log(text)
+    matches = SUMMARY_LINE.findall(cleaned)
     if not matches:
-        return {}
+        maven = MAVEN_SUMMARY.findall(cleaned)
+        if not maven:
+            return {}
+        run, failures, errors, skipped = (int(part or 0) for part in maven[-1])
+        return {
+            "passed": max(0, run - failures - errors - skipped),
+            "failed": failures,
+            "error": errors,
+            "skipped": skipped,
+        }
     counts = {}
     for number, kind in SUMMARY_PART.findall(matches[-1]):
         key = "error" if kind.startswith("error") else kind.rstrip("s") if kind.startswith("warning") else kind

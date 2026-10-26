@@ -1,0 +1,11 @@
+{
+  "title": "Free shipping starts one cent above the threshold",
+  "category": "boundary condition",
+  "solution": [
+    {
+      "file": "src/main/java/com/firewatch/bench/shipping/ShippingPolicy.java",
+      "search": "        if (subtotalCents > FREE_SHIPPING_CENTS) {",
+      "replace": "        if (subtotalCents >= FREE_SHIPPING_CENTS) {"
+    }
+  ]
+}

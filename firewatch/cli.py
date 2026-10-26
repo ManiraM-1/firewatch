@@ -132,7 +132,7 @@ def build_parser():
     doctor.set_defaults(func=cmd_doctor)
 
     bench = sub.add_parser("bench", help="run the seeded-bug benchmark")
-    bench.add_argument("--cases", default="bench/cases")
+    bench.add_argument("--cases", nargs="+", default=["bench/cases", "bench/cases-java"])
     bench.add_argument("--out", default="bench/results")
     bench.add_argument("--only", nargs="*", help="run only these case names")
     bench.add_argument("--max-attempts", type=int)

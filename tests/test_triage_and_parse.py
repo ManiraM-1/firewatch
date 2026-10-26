@@ -1,4 +1,4 @@
-from firewatch.context import build_context
+from firewatch.context import build_context, local_imports
 from firewatch.fixer import parse_proposal
 from firewatch.triage import summary_counts, triage_log
 from firewatch.verifier import run_tests
@@ -27,6 +27,17 @@ def test_github_log_is_cleaned_and_paths_normalized(case_repo):
 def test_summary_counts():
     assert summary_counts("=== 2 failed, 5 passed, 1 error in 0.3s ===") == {"failed": 2, "passed": 5, "error": 1}
     assert summary_counts("no summary here") == {}
+
+
+def test_maven_summary_counts():
+    log = "[ERROR] Tests run: 4, Failures: 1, Errors: 1, Skipped: 0\n"
+    assert summary_counts(log) == {"passed": 2, "failed": 1, "error": 1, "skipped": 0}
+    assert summary_counts("[ERROR] Tests run: 3, Failures: 1, Errors: 0") == {
+        "passed": 2,
+        "failed": 1,
+        "error": 0,
+        "skipped": 0,
+    }
 
 
 def test_context_follows_imports_across_files(case_repo, settings):
@@ -85,6 +96,17 @@ def test_java_stack_trace_filenames_resolve_to_repo_paths(tmp_path):
     assert ("src/main/java/com/shop/Cart.java", 42) in refs
     assert ("src/test/java/com/shop/CartTest.java", 18) in refs
     assert not any("AssertionUtils" in path for path, _ in refs)
+
+
+def test_java_context_follows_package_to_the_class_under_test(tmp_path):
+    src = tmp_path / "src" / "main" / "java" / "com" / "shop"
+    test = tmp_path / "src" / "test" / "java" / "com" / "shop"
+    src.mkdir(parents=True)
+    test.mkdir(parents=True)
+    (src / "Cart.java").write_text("package com.shop;\nclass Cart {}")
+    (test / "CartTest.java").write_text("package com.shop;\nclass CartTest {}")
+    deps = local_imports("src/test/java/com/shop/CartTest.java", tmp_path)
+    assert "src/main/java/com/shop/Cart.java" in deps
 
 
 def test_absolute_paths_outside_repo_are_ignored(tmp_path):

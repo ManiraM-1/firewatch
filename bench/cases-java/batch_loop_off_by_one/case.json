@@ -1,0 +1,11 @@
+{
+  "title": "Batch total drops the last amount",
+  "category": "off-by-one",
+  "solution": [
+    {
+      "file": "src/main/java/com/firewatch/bench/batch/BatchTotals.java",
+      "search": "        for (int i = 0; i < amounts.size() - 1; i++) {",
+      "replace": "        for (int i = 0; i < amounts.size(); i++) {"
+    }
+  ]
+}

@@ -4,7 +4,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 SKIP_DIRS = {".git", ".venv", "venv", "env", "node_modules", "__pycache__", ".pytest_cache", "build", "dist", ".tox"}
-TEST_FILE = re.compile(r"(^|/)(test_[^/]*\.py|[^/]*_test\.py|conftest\.py)$|(^|/)tests?/")
+TEST_FILE = re.compile(r"(^|/)(test_[^/]*\.py|[^/]*_test\.py|conftest\.py|[^/]*Tests?\.java|[^/]*IT\.java)$|(^|/)tests?/")
+JAVA_IMPORT = re.compile(r"^\s*import\s+(?:static\s+)?([\w.]+)\s*;", re.MULTILINE)
+JAVA_PACKAGE = re.compile(r"^\s*package\s+([\w.]+)\s*;", re.MULTILINE)
+JAVA_SOURCE_ROOTS = (("src", "main", "java"), ("src", "test", "java"))
 
 
 def is_test_path(path):
@@ -58,7 +61,45 @@ def _module_candidates(module, repo_root, from_file=None, level=0):
     return found
 
 
+def _java_class_file(name, repo_root):
+    parts = name.split(".")
+    candidates = [parts]
+    if len(parts) > 1:
+        candidates.append(parts[:-1])
+    found = []
+    for candidate in candidates:
+        for prefix in JAVA_SOURCE_ROOTS:
+            path = Path(*prefix, *candidate).with_suffix(".java")
+            if (Path(repo_root) / path).is_file():
+                found.append(path.as_posix())
+    return found
+
+
+def _java_local_files(rel, repo_root):
+    source = _read(repo_root, rel)
+    if source is None:
+        return []
+    found = []
+    for match in JAVA_IMPORT.finditer(source):
+        found.extend(_java_class_file(match.group(1), repo_root))
+    package = JAVA_PACKAGE.search(source)
+    if package:
+        package_dir = Path(*package.group(1).split("."))
+        for prefix in JAVA_SOURCE_ROOTS:
+            directory = Path(repo_root) / Path(*prefix) / package_dir
+            if directory.is_dir():
+                for path in sorted(directory.glob("*.java")):
+                    found.append(path.relative_to(Path(repo_root)).as_posix())
+    unique = []
+    for path in found:
+        if path != rel and path not in unique:
+            unique.append(path)
+    return unique
+
+
 def local_imports(rel, repo_root):
+    if rel.endswith(".java"):
+        return _java_local_files(rel, repo_root)
     source = _read(repo_root, rel)
     if source is None or not rel.endswith(".py"):
         return []
