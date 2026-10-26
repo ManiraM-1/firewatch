@@ -1,0 +1,79 @@
+{
+  "model": "remote:openai/gpt-oss-120b",
+  "max_attempts": 3,
+  "retry_temperatures": [
+    0.2,
+    0.5,
+    0.8
+  ],
+  "summary": {
+    "total": 2,
+    "fixed": 2,
+    "fix_rate": 1.0,
+    "first_attempt": 2,
+    "mean_attempts_when_fixed": 1,
+    "median_seconds": 2.8
+  },
+  "cases": [
+    {
+      "name": "pagination_off_by_one",
+      "title": "Pagination skips the first page",
+      "category": "off-by-one",
+      "language": "python",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 3.1,
+      "model_seconds": 1.3,
+      "diagnosis": "The pagination start index is calculated as page * size, causing the first page to skip items and the last page to be empty; it should offset by one page.",
+      "diff": "--- a/pagination.py\n+++ b/pagination.py\n@@ -22,6 +22,6 @@\n         raise ValueError(\"page starts at 1\")\n     if size < 1:\n         raise ValueError(\"size must be positive\")\n-    start = page * size\n+    start = (page - 1) * size\n     end = start + size\n     return Page(items=items[start:end], page=page, size=size, total=len(items))\n",
+      "edit_errors": [],
+      "model": "remote:openai/gpt-oss-120b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "The pagination start index is calculated as page * size, causing the first page to skip items and the last page to be empty; it should offset by one page.",
+          "files_changed": [
+            "pagination.py"
+          ],
+          "failed_before": 2,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/pagination.py\n+++ b/pagination.py\n@@ -22,6 +22,6 @@\n         raise ValueError(\"page starts at 1\")\n     if size < 1:\n         raise ValueError(\"size must be positive\")\n-    start = page * size\n+    start = (page - 1) * size\n     end = start + size\n     return Page(items=items[start:end], page=page, size=size, total=len(items))\n",
+          "edit_errors": []
+        }
+      ]
+    },
+    {
+      "name": "tax_rate_units",
+      "title": "Tax computed with percentage instead of fraction (cross-file)",
+      "category": "cross-file contract",
+      "language": "python",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 2.5,
+      "model_seconds": 1.1,
+      "diagnosis": "tax_amount multiplies by the GST percentage directly instead of converting it to a decimal, causing tax values to be 100x too large.",
+      "diff": "--- a/checkout.py\n+++ b/checkout.py\n@@ -2,7 +2,7 @@\n \n \n def tax_amount(price, category=\"standard\"):\n-    return round(price * rate_for(category), 2)\n+    return round(price * rate_for(category) / 100, 2)\n \n \n def price_with_tax(price, category=\"standard\"):\n",
+      "edit_errors": [],
+      "model": "remote:openai/gpt-oss-120b",
+      "attempt_log": [
+        {
+          "number": 1,
+          "temperature": 0.2,
+          "diagnosis": "tax_amount multiplies by the GST percentage directly instead of converting it to a decimal, causing tax values to be 100x too large.",
+          "files_changed": [
+            "checkout.py"
+          ],
+          "failed_before": 2,
+          "failed_after": 0,
+          "kept": true,
+          "new_failures": [],
+          "diff": "--- a/checkout.py\n+++ b/checkout.py\n@@ -2,7 +2,7 @@\n \n \n def tax_amount(price, category=\"standard\"):\n-    return round(price * rate_for(category), 2)\n+    return round(price * rate_for(category) / 100, 2)\n \n \n def price_with_tax(price, category=\"standard\"):\n",
+          "edit_errors": []
+        }
+      ]
+    }
+  ]
+}
