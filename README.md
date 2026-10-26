@@ -241,7 +241,18 @@ The test suite runs the whole agent loop end to end with a scripted model, inclu
 
 ## Built with Alan
 
-<!-- Fill this in with how you actually used Alan during the build: which parts, which models, what worked, what you reported. -->
+Java/Maven support was built in an Alan session running **Alan Code with DeepSeek V4.1 Flash**, working directly on this repository. I gave it one task: add three Java benchmark cases in the same format as the Python ones, each of which must fail before its fix and pass after it with `mvn -q test`.
+
+Alan planned the work in four steps and carried it out:
+
+- three JUnit 5 / Maven cases in `bench/cases-java` (an off-by-one loop bound, a `>` that should be `>=`, and a missing null guard);
+- Maven test-summary parsing in `triage.py`;
+- Java-aware retrieval in `context.py`, which follows `import` statements and same-package classes from a failing test to the class under test;
+- per-case test-command detection, plus tests for all of it.
+
+It also confirmed that each new case fails before its reference fix, which is the rule the benchmark depends on. I reviewed the diff before committing it. `firewatch bench --validate` passes 17/17, and in the v2 benchmark the 7B model fixed 2 of the 3 Java cases.
+
+The first session failed to start (`opencode serve did not open a session within 60000 ms`) while my laptop was busy running a local 7B model. A second session started normally.
 
 ## License
 
