@@ -135,7 +135,7 @@ The test-file lock also earned its place: in v1, the model's answer to `retry_at
 ### Run locally against any repo
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/firewatch
+git clone https://github.com/ManiraM-1/firewatch
 cd firewatch
 python -m venv .venv
 .venv\Scripts\activate          # Windows
@@ -188,7 +188,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - uses: YOUR_GITHUB_USERNAME/firewatch@main
+      - uses: ManiraM-1/firewatch@main
         with:
           test-command: python -m pytest -q
           llm-base-url: ${{ secrets.FIREWATCH_LLM_BASE_URL }}
