@@ -1,0 +1,62 @@
+name: Firewatch
+description: Reproduce a failed CI run, fix it with an open model, verify the fix by re-running the tests, and open a pull request.
+author: Maniram
+branding:
+  icon: shield
+  color: orange
+
+inputs:
+  test-command:
+    description: Command that runs the test suite
+    default: python -m pytest -q
+  llm-base-url:
+    description: OpenAI-compatible base URL of the model provider (for example https://openrouter.ai/api/v1)
+    required: true
+  llm-api-key:
+    description: API key for the provider
+    required: false
+    default: ""
+  llm-model:
+    description: Model name at the provider
+    required: true
+  max-attempts:
+    description: Maximum fix attempts
+    default: "3"
+  open-pr:
+    description: Open a pull request when a verified fix is found. Set to "false" to only comment.
+    default: "true"
+  github-token:
+    description: Token used to read logs, push the fix branch, and open the pull request
+    default: ${{ github.token }}
+
+outputs:
+  status:
+    description: fixed, not_fixed, not_reproduced, or error
+    value: ${{ steps.firewatch.outputs.status }}
+  pr-url:
+    description: URL of the pull request, when one was opened
+    value: ${{ steps.firewatch.outputs.pr_url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install Firewatch
+      shell: bash
+      run: python -m pip install --quiet "$GITHUB_ACTION_PATH"
+
+    - name: Investigate and fix
+      id: firewatch
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        FIREWATCH_PROVIDERS: remote
+        LLM_BASE_URL: ${{ inputs.llm-base-url }}
+        LLM_API_KEY: ${{ inputs.llm-api-key }}
+        LLM_MODEL: ${{ inputs.llm-model }}
+        FIREWATCH_MAX_ATTEMPTS: ${{ inputs.max-attempts }}
+        FIREWATCH_TEST_COMMAND: ${{ inputs.test-command }}
+        FIREWATCH_OPEN_PR: ${{ inputs.open-pr }}
+      run: |
+        args=(ci --test "$FIREWATCH_TEST_COMMAND")
+        if [ "$FIREWATCH_OPEN_PR" = "false" ]; then args+=(--no-pr); fi
+        firewatch "${args[@]}"
