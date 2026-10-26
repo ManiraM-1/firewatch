@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import subprocess
 
 from .agent import run_agent
@@ -7,6 +8,17 @@ from .github import GitHub, GitHubError
 from .report import render_markdown
 
 BRANCH_PREFIX = "firewatch/"
+
+
+def summary_title(diagnosis, limit=72):
+    text = " ".join((diagnosis or "").split())
+    first = re.split(r"(?<=[.!?;])\s", text, maxsplit=1)[0].rstrip(".!?; ")
+    if not first:
+        return "repair failing tests"
+    if len(first) > limit:
+        cut = first[: limit - 1].rsplit(" ", 1)[0].rstrip(",:;")
+        first = cut + "…"
+    return first
 
 
 def _git(repo_root, *args):
@@ -84,7 +96,7 @@ def run_ci(repo_root, test_command, llm, settings, log=print, open_pr=True):
         _git(repo_root, "config", "user.email", "firewatch-bot@users.noreply.github.com")
         _git(repo_root, "checkout", "-B", branch)
         _git(repo_root, "add", "--", *result.changed_files)
-        title_hint = (result.diagnosis.split(".")[0] or "repair failing tests")[:72]
+        title_hint = summary_title(result.diagnosis)
         _git(repo_root, "commit", "-m", f"fix: {title_hint}", "-m", "Automated fix by Firewatch. Verified by re-running the test suite.")
         _git(repo_root, "push", "origin", f"HEAD:refs/heads/{branch}", "--force")
         body = render_markdown(result, run_url, title="Firewatch fix")

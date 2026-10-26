@@ -115,3 +115,13 @@ def test_ci_skips_its_own_branches_and_forks(tmp_path, monkeypatch, case_repo, s
     write_event(tmp_path, monkeypatch, sha, conclusion="success")
     assert ci.run_ci(str(repo), "x", ScriptedLLM([]), settings, log=lambda _m: None) == 0
     assert not any(i.pulls for i in FakeGitHub.instances)
+
+
+def test_pr_title_keeps_dotted_names_and_stops_at_the_sentence():
+    assert ci.summary_title("Cart.tax multiplies by the GST percentage instead of a fraction. Divide by 100.") == (
+        "Cart.tax multiplies by the GST percentage instead of a fraction"
+    )
+    assert ci.summary_title("") == "repair failing tests"
+    long = "The retry loop " + "keeps going " * 20
+    title = ci.summary_title(long)
+    assert len(title) <= 72 and title.endswith("…") and "  " not in title

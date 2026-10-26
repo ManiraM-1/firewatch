@@ -44,7 +44,7 @@ flowchart LR
 
 These are the choices that made the difference between a demo and something I'd actually install.
 
-**Verify inside the runner, not by pushing and waiting.** The obvious design is push a fix branch → wait for CI → read the result → retry. Each loop costs minutes, and pull requests opened with `GITHUB_TOKEN` [don't trigger workflows](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/triggering-a-workflow#triggering-a-workflow-from-a-workflow) anyway. Firewatch runs the test command itself on the checked-out commit, so each attempt takes seconds, and the PR only exists once the fix is proven.
+**Verify inside the runner, not by pushing and waiting.** The obvious design is push a fix branch → wait for CI → read the result → retry. Each loop costs minutes, and CI on a pull request opened by the Actions bot waits for a maintainer to approve it, so there is nobody to wait for. Firewatch runs the test command itself on the checked-out commit, so each attempt takes seconds, and the PR only exists once the fix is proven.
 
 **Search/replace edits instead of unified diffs.** Smaller open models are bad at producing valid diff hunks (line numbers drift, context lines get paraphrased). Copying an exact block of existing code is much easier for them. The patcher is forgiving where it's safe to be: it accepts a match that differs only in trailing whitespace, and re-indents a block the model returned with the wrong indentation. It refuses where it isn't safe: if a block matches in two places, the edit is rejected and the model is told to include more context.
 
@@ -86,32 +86,33 @@ The three Java cases use JUnit 5 and a standard Maven layout. They cover an off-
 
 ### Results
 
-All runs use **qwen2.5-coder 7B through Ollama on a Windows laptop**, 3 attempts per case. Raw results, including every diagnosis and diff, are in [`bench/results`](bench/results).
+v1 and v2 use **qwen2.5-coder 7B through Ollama on a Windows laptop**; the last row uses **gpt-oss-120b on Groq**, the same model the GitHub Action runs with. 3 attempts per case. Raw results, including every diagnosis and diff, are in [`bench/results`](bench/results).
 
 | | Python (14 cases) | Java (3 cases) | Total |
 |---|---|---|---|
 | v1: count-based progress, fixed temperature | 7/14 (50%) | not run | 7/14 |
 | v2: set-based progress, escalating retries | **9/14 (64%)** | **2/3** | **11/17 (65%)** |
+| v2 with gpt-oss-120b (Groq) | **14/14** | **3/3** | **17/17**, all on the first attempt |
 
-| Case | v1 | v2 |
-|---|---|---|
-| config_wrong_key | fixed (1) | fixed (1) |
-| discount_threshold | not fixed | not fixed |
-| invoice_decimal_places | fixed (1) | fixed (1) |
-| leaderboard_order | not fixed | not fixed |
-| mean_integer_division | fixed (1) | fixed (1) |
-| missing_middle_name | not fixed | not fixed |
-| mutable_default_cart | fixed (1) | fixed (1) |
-| pagination_off_by_one | fixed (1) | fixed (1) |
-| port_exception_type | fixed (1) | fixed (1) |
-| renamed_import | fixed (1) | fixed (1) |
-| restock_mutates_input | not fixed | **fixed (2)** |
-| retry_attempt_count | not fixed | **fixed (1)** |
-| tax_rate_units | not fixed | not fixed |
-| weekend_check | not fixed | not fixed |
-| batch_loop_off_by_one (Java) | | fixed (1) |
-| free_shipping_boundary (Java) | | not fixed |
-| missing_middle_null (Java) | | fixed (2) |
+| Case | v1 (7B) | v2 (7B) | v2 (120B) |
+|---|---|---|---|
+| config_wrong_key | fixed (1) | fixed (1) | fixed (1) |
+| discount_threshold | not fixed | not fixed | fixed (1) |
+| invoice_decimal_places | fixed (1) | fixed (1) | fixed (1) |
+| leaderboard_order | not fixed | not fixed | fixed (1) |
+| mean_integer_division | fixed (1) | fixed (1) | fixed (1) |
+| missing_middle_name | not fixed | not fixed | fixed (1) |
+| mutable_default_cart | fixed (1) | fixed (1) | fixed (1) |
+| pagination_off_by_one | fixed (1) | fixed (1) | fixed (1) |
+| port_exception_type | fixed (1) | fixed (1) | fixed (1) |
+| renamed_import | fixed (1) | fixed (1) | fixed (1) |
+| restock_mutates_input | not fixed | **fixed (2)** | fixed (1) |
+| retry_attempt_count | not fixed | **fixed (1)** | fixed (1) |
+| tax_rate_units | not fixed | not fixed | fixed (1) |
+| weekend_check | not fixed | not fixed | fixed (1) |
+| batch_loop_off_by_one (Java) | | fixed (1) | fixed (1) |
+| free_shipping_boundary (Java) | | not fixed | fixed (1) |
+| missing_middle_null (Java) | | fixed (2) | fixed (1) |
 
 Numbers in brackets are the attempt that produced the passing fix.
 
@@ -126,6 +127,7 @@ The test-file lock also earned its place: in v1, the model's answer to `retry_at
 
 ### Honest caveats
 
+- With gpt-oss-120b the benchmark saturates at 17/17, so it can no longer tell strong models apart. It is most useful for small models, where the agent's design visibly changes the result; separating large models needs harder, multi-file cases.
 - A 7B model on a laptop is a floor, not a ceiling. Each model call takes 1–3 minutes, and runs vary: `tax_rate_units` was fixed in an earlier 3-case run and not fixed in either full run.
 - Each configuration was run once, so a difference of one or two cases is within run-to-run noise. v2 not losing any case v1 fixed, while fixing two more, is the meaningful part.
 - The cases are small. They measure whether the loop (reproduce, retrieve, patch, verify) works with a small open model, not how it does on a large codebase.
