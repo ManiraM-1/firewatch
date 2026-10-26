@@ -1,0 +1,53 @@
+{
+  "model": "ollama:qwen2.5-coder:7b",
+  "max_attempts": 3,
+  "summary": {
+    "total": 3,
+    "fixed": 3,
+    "fix_rate": 1.0,
+    "first_attempt": 2,
+    "mean_attempts_when_fixed": 1.33,
+    "median_seconds": 117.6
+  },
+  "cases": [
+    {
+      "name": "pagination_off_by_one",
+      "title": "Pagination skips the first page",
+      "category": "off-by-one",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 117.6,
+      "model_seconds": 115.5,
+      "diagnosis": "The `paginate` function is incorrectly calculating the start and end indices for slicing the items list.",
+      "diff": "--- a/pagination.py\n+++ b/pagination.py\n@@ -22,6 +22,6 @@\n         raise ValueError(\"page starts at 1\")\n     if size < 1:\n         raise ValueError(\"size must be positive\")\n-    start = page * size\n+    start = (page - 1) * size\n     end = start + size\n     return Page(items=items[start:end], page=page, size=size, total=len(items))\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b"
+    },
+    {
+      "name": "renamed_import",
+      "title": "Import broken after a helper was renamed",
+      "category": "import error",
+      "status": "fixed",
+      "attempts": 1,
+      "seconds": 95.4,
+      "model_seconds": 93.8,
+      "diagnosis": "The `slugify` function is not defined in `textutils.py`, but it is being imported and used in `articles.py`. The correct function name should be `slugify_text`.",
+      "diff": "--- a/C:/Users/Maniram/AppData/Local/Temp/fw-renamed_import-1vct57cy/articles.py\n+++ b/C:/Users/Maniram/AppData/Local/Temp/fw-renamed_import-1vct57cy/articles.py\n@@ -1,4 +1,4 @@\n-from textutils import slugify, truncate\n+from textutils import slugify_text as slugify, truncate\n \n \n class Article:\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b"
+    },
+    {
+      "name": "tax_rate_units",
+      "title": "Tax computed with percentage instead of fraction (cross-file)",
+      "category": "cross-file contract",
+      "status": "fixed",
+      "attempts": 2,
+      "seconds": 188.9,
+      "model_seconds": 187.0,
+      "diagnosis": "The tax rate for 'reduced' category is being applied incorrectly in the `price_with_tax` function.",
+      "diff": "--- a/checkout.py\n+++ b/checkout.py\n@@ -2,7 +2,7 @@\n \n \n def tax_amount(price, category=\"standard\"):\n-    return round(price * rate_for(category), 2)\n+    return round(price * (rate_for(category) / 100), 2)\n \n \n def price_with_tax(price, category=\"standard\"):\n",
+      "edit_errors": [],
+      "model": "ollama:qwen2.5-coder:7b"
+    }
+  ]
+}
