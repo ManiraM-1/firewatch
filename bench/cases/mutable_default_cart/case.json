@@ -1,0 +1,11 @@
+{
+  "title": "Carts share items through a mutable default argument",
+  "category": "shared state",
+  "solution": [
+    {
+      "file": "cart.py",
+      "search": "    def __init__(self, owner, items=[]):\n        self.owner = owner\n        self.items = items",
+      "replace": "    def __init__(self, owner, items=None):\n        self.owner = owner\n        self.items = list(items) if items else []"
+    }
+  ]
+}

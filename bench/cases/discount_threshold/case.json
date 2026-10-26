@@ -1,0 +1,11 @@
+{
+  "title": "Bulk discount not applied at exactly the threshold",
+  "category": "boundary condition",
+  "solution": [
+    {
+      "file": "pricing.py",
+      "search": "    if amount > BULK_DISCOUNT_MIN:",
+      "replace": "    if amount >= BULK_DISCOUNT_MIN:"
+    }
+  ]
+}

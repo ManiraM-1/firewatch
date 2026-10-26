@@ -1,0 +1,11 @@
+{
+  "title": "Pagination skips the first page",
+  "category": "off-by-one",
+  "solution": [
+    {
+      "file": "pagination.py",
+      "search": "    start = page * size",
+      "replace": "    start = (page - 1) * size"
+    }
+  ]
+}

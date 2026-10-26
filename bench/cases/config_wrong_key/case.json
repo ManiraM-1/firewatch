@@ -1,0 +1,11 @@
+{
+  "title": "KeyError from a config key that was renamed",
+  "category": "wrong key",
+  "solution": [
+    {
+      "file": "settings.py",
+      "search": "        \"timeout\": config[\"timeout_seconds\"],",
+      "replace": "        \"timeout\": config[\"timeout\"],"
+    }
+  ]
+}

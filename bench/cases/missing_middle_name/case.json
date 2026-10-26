@@ -1,0 +1,11 @@
+{
+  "title": "Name formatting crashes when the middle name is missing",
+  "category": "None handling",
+  "solution": [
+    {
+      "file": "users.py",
+      "search": "    return \" \".join(parts)",
+      "replace": "    return \" \".join(part for part in parts if part)"
+    }
+  ]
+}

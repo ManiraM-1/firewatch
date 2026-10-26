@@ -1,0 +1,16 @@
+{
+  "title": "Parser raises a bare Exception instead of ValueError",
+  "category": "exception contract",
+  "solution": [
+    {
+      "file": "ports.py",
+      "search": "        raise Exception(f\"invalid port: {value!r}\")",
+      "replace": "        raise ValueError(f\"invalid port: {value!r}\")"
+    },
+    {
+      "file": "ports.py",
+      "search": "        raise Exception(f\"port out of range: {port}\")",
+      "replace": "        raise ValueError(f\"port out of range: {port}\")"
+    }
+  ]
+}

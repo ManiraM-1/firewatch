@@ -1,0 +1,11 @@
+{
+  "title": "Import broken after a helper was renamed",
+  "category": "import error",
+  "solution": [
+    {
+      "file": "articles.py",
+      "search": "from textutils import slugify, truncate",
+      "replace": "from textutils import slugify_text as slugify, truncate"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "title": "Restock mutates the caller's stock dictionary",
+  "category": "shared state",
+  "solution": [
+    {
+      "file": "inventory.py",
+      "search": "    for sku, qty in deliveries.items():\n        stock[sku] = stock.get(sku, 0) + qty\n    return stock",
+      "replace": "    updated = dict(stock)\n    for sku, qty in deliveries.items():\n        updated[sku] = updated.get(sku, 0) + qty\n    return updated"
+    }
+  ]
+}

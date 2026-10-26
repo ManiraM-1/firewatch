@@ -1,0 +1,11 @@
+{
+  "title": "Invoice amounts show one decimal place instead of two",
+  "category": "formatting",
+  "solution": [
+    {
+      "file": "invoice.py",
+      "search": "    return f\"{symbol}{amount:,.1f}\"",
+      "replace": "    return f\"{symbol}{amount:,.2f}\""
+    }
+  ]
+}

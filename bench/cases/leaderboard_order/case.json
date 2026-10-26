@@ -1,0 +1,11 @@
+{
+  "title": "Leaderboard ranks lowest score first",
+  "category": "sort order",
+  "solution": [
+    {
+      "file": "leaderboard.py",
+      "search": "key=lambda kv: (kv[1], kv[0])",
+      "replace": "key=lambda kv: (-kv[1], kv[0])"
+    }
+  ]
+}

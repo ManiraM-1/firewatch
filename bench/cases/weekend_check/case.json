@@ -1,0 +1,11 @@
+{
+  "title": "Saturdays counted as business days",
+  "category": "boundary condition",
+  "solution": [
+    {
+      "file": "calendar_utils.py",
+      "search": "    return day.weekday() >= 6",
+      "replace": "    return day.weekday() >= 5"
+    }
+  ]
+}

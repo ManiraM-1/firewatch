@@ -1,0 +1,11 @@
+{
+  "title": "Mean truncates because of floor division",
+  "category": "arithmetic",
+  "solution": [
+    {
+      "file": "stats.py",
+      "search": "    return sum(values) // len(values)",
+      "replace": "    return sum(values) / len(values)"
+    }
+  ]
+}

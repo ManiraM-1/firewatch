@@ -1,0 +1,11 @@
+{
+  "title": "Tax computed with percentage instead of fraction (cross-file)",
+  "category": "cross-file contract",
+  "solution": [
+    {
+      "file": "checkout.py",
+      "search": "    return round(price * rate_for(category), 2)",
+      "replace": "    return round(price * rate_for(category) / 100, 2)"
+    }
+  ]
+}
